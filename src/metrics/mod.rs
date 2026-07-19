@@ -2,6 +2,7 @@ pub mod cpu;
 pub mod disk;
 pub mod gpu;
 pub mod memory;
+pub mod model_catalog;
 pub mod netdata;
 pub mod network;
 
@@ -22,6 +23,8 @@ pub struct MetricsSnapshot {
     pub gpu_events: Vec<gpu::GpuEvent>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub nodes: Vec<NodeMetricsSnapshot>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub model_targets: Vec<model_catalog::ModelTarget>,
 }
 
 /// Hardware metrics for one node when a remote multi-node source is active.
@@ -46,6 +49,7 @@ pub async fn metrics_collector(
     poll_interval_ms: u64,
     gpu_index: u32,
     engine_state: std::sync::Arc<tokio::sync::RwLock<Vec<EngineSnapshot>>>,
+    model_catalog_state: std::sync::Arc<tokio::sync::RwLock<Vec<model_catalog::ModelTarget>>>,
 ) {
     let mut interval = tokio::time::interval(Duration::from_millis(poll_interval_ms));
 
@@ -133,6 +137,7 @@ pub async fn metrics_collector(
             engines,
             gpu_events,
             nodes: Vec::new(),
+            model_targets: model_catalog_state.read().await.clone(),
         };
 
         match serde_json::to_string(&snapshot) {
@@ -154,6 +159,7 @@ pub async fn metrics_collector(
     poll_interval_ms: u64,
     _gpu_index: u32,
     engine_state: std::sync::Arc<tokio::sync::RwLock<Vec<EngineSnapshot>>>,
+    model_catalog_state: std::sync::Arc<tokio::sync::RwLock<Vec<model_catalog::ModelTarget>>>,
 ) {
     let mut interval = tokio::time::interval(Duration::from_millis(poll_interval_ms));
 
@@ -195,6 +201,7 @@ pub async fn metrics_collector(
             engines,
             gpu_events,
             nodes: Vec::new(),
+            model_targets: model_catalog_state.read().await.clone(),
         };
 
         match serde_json::to_string(&snapshot) {
