@@ -141,15 +141,20 @@ export function Dashboard({
 
   return (
     <div ref={rootRef} className="flex flex-col flex-1 min-h-0 gap-2">
-      {/* ── LLM Engines — auto-height, fits content; hardware fills remainder ── */}
-      <div className="shrink-0 min-h-0">
-        <EngineSection
-          engines={metrics.engines}
-          showCharts={showEngineCharts}
-          getChartData={history.getChartData}
-          requests={requests}
-        />
-      </div>
+      {/* The local engine detector is meaningful only on a host running vLLM.
+          Netdata deployments use model_targets as their source of truth; showing
+          an empty local-engine card there falsely reports healthy remote models
+          as offline. */}
+      {metrics.engines.length > 0 && (
+        <div className="shrink-0 min-h-0">
+          <EngineSection
+            engines={metrics.engines}
+            showCharts={showEngineCharts}
+            getChartData={history.getChartData}
+            requests={requests}
+          />
+        </div>
+      )}
 
       {/* ── Hardware Overview — fills the rest of the viewport ── */}
       <div className="flex-1 min-h-0 bg-[#0a0a0d]/80 rounded-xl border border-white/[0.03] p-1 lg:p-1.5 2xl:p-2 flex flex-col">
