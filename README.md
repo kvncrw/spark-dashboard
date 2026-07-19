@@ -214,6 +214,10 @@ from Netdata API v3 and the header exposes a selector for every matching node.
 Engine collection remains independent and continues to use local discovery or
 the explicit `--engine` / `--engine-url` options.
 
+Set `SPARK_DASHBOARD_MODEL_CATALOG_URL` to a status-dashboard-compatible
+`/api/models` endpoint to show the configured model estates, live models,
+aliases, hardware, and reachability above the hardware dashboard.
+
 ### Upgrade
 
 ```bash
@@ -248,6 +252,7 @@ spark-dashboard service status
       --gpu-index <IDX>       NVML GPU index to monitor [default: 0] [env: SPARK_DASHBOARD_GPU_INDEX]
       --netdata-url <URL>     Netdata parent URL [env: SPARK_DASHBOARD_NETDATA_URL]
       --netdata-nodes <PATTERN> Netdata node selector [default: spark-*] [env: SPARK_DASHBOARD_NETDATA_NODES]
+      --model-catalog-url <URL> Read-only model catalog [env: SPARK_DASHBOARD_MODEL_CATALOG_URL]
       --engine <TYPE>         Manual engine type (e.g. vllm)
       --engine-url <URL>      Manual engine endpoint (requires --engine)
       --engine-api-key <KEY>  API key for an endpoint, paired by index with --engine-url

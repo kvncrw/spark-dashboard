@@ -112,6 +112,7 @@ All are optional; defaults match the binary. Set them in `.env`.
 | `SPARK_DASHBOARD_GPU_INDEX`         | `0`         | NVML GPU index to monitor.                           |
 | `SPARK_DASHBOARD_NETDATA_URL`       | _(unset)_   | Netdata parent API v3 URL for multi-node metrics.    |
 | `SPARK_DASHBOARD_NETDATA_NODES`     | `spark-*`   | Netdata node selector used with the parent URL.      |
+| `SPARK_DASHBOARD_MODEL_CATALOG_URL` | _(unset)_   | Read-only endpoint that enumerates model estates.    |
 | `SPARK_DASHBOARD_PROVIDER_API_KEY`  | _(unset)_   | Fallback API key for auth-gated engines.             |
 | `RUST_LOG`                          | `info`      | Log filter (`error`/`warn`/`info`/`debug`/`trace`).  |
 

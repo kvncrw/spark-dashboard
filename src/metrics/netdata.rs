@@ -3,6 +3,7 @@ use super::{
     NodeMetricsSnapshot,
 };
 use crate::engines::EngineSnapshot;
+use crate::metrics::model_catalog::ModelTarget;
 use reqwest::Client;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -69,6 +70,7 @@ pub async fn metrics_collector(
     poll_interval_ms: u64,
     client: NetdataClient,
     engine_state: std::sync::Arc<RwLock<Vec<EngineSnapshot>>>,
+    model_catalog_state: std::sync::Arc<RwLock<Vec<ModelTarget>>>,
 ) {
     let mut interval = tokio::time::interval(Duration::from_millis(poll_interval_ms));
     loop {
@@ -93,6 +95,7 @@ pub async fn metrics_collector(
                     engines: engine_state.read().await.clone(),
                     gpu_events: Vec::new(),
                     nodes,
+                    model_targets: model_catalog_state.read().await.clone(),
                 };
                 if let Ok(json) = serde_json::to_string(&snapshot) {
                     let _ = tx.send(json);

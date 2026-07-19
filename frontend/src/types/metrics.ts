@@ -8,6 +8,18 @@ export interface MetricsSnapshot {
   engines: EngineSnapshot[]
   gpu_events: GpuEventData[]
   nodes?: NodeMetricsSnapshot[]
+  model_targets?: ModelTarget[]
+}
+
+export interface ModelTarget {
+  slot_id: string
+  hardware: string
+  estate: string
+  models: string[]
+  state: string
+  up: boolean
+  aliases: string[]
+  api_base: string
 }
 
 export interface NodeMetricsSnapshot {

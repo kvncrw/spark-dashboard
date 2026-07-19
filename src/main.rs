@@ -85,6 +85,11 @@ struct RunArgs {
     #[arg(long, env = "SPARK_DASHBOARD_NETDATA_NODES", default_value = "spark-*")]
     netdata_nodes: String,
 
+    /// Read-only model catalog endpoint. The status dashboard's /api/models
+    /// response is supported directly.
+    #[arg(long, env = "SPARK_DASHBOARD_MODEL_CATALOG_URL")]
+    model_catalog_url: Option<String>,
+
     /// Manually specify engine type (use with --engine-url)
     #[arg(long, value_name = "TYPE")]
     engine: Vec<String>,
@@ -174,6 +179,15 @@ async fn run_server_inner(args: RunArgs) -> Result<(), Box<dyn std::error::Error
 
     // Shared engine state: engine collector writes, metrics collector reads
     let engine_state: Arc<RwLock<Vec<engines::EngineSnapshot>>> = Arc::new(RwLock::new(Vec::new()));
+    let model_catalog_state = Arc::new(RwLock::new(Vec::new()));
+
+    if let Some(url) = args.model_catalog_url.clone() {
+        tracing::info!(model_catalog_url = url, "using external model catalog");
+        tokio::spawn(metrics::model_catalog::collector_loop(
+            url,
+            model_catalog_state.clone(),
+        ));
+    }
 
     // Spawn engine collector loop as separate tokio task (Research Pitfall 7:
     // separate task so slow engine API calls don't block hardware metrics)
@@ -192,6 +206,7 @@ async fn run_server_inner(args: RunArgs) -> Result<(), Box<dyn std::error::Error
             args.poll_interval,
             client,
             engine_state.clone(),
+            model_catalog_state.clone(),
         ));
     } else {
         tokio::spawn(metrics::metrics_collector(
@@ -199,6 +214,7 @@ async fn run_server_inner(args: RunArgs) -> Result<(), Box<dyn std::error::Error
             args.poll_interval,
             args.gpu_index,
             engine_state.clone(),
+            model_catalog_state.clone(),
         ));
     }
 
