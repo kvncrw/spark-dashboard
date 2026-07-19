@@ -7,6 +7,17 @@ export interface MetricsSnapshot {
   network: NetworkMetrics
   engines: EngineSnapshot[]
   gpu_events: GpuEventData[]
+  nodes?: NodeMetricsSnapshot[]
+}
+
+export interface NodeMetricsSnapshot {
+  name: string
+  state: string
+  gpu: GpuMetrics
+  cpu: CpuMetrics
+  memory: MemoryMetrics
+  disk: DiskMetrics
+  network: NetworkMetrics
 }
 
 /** Wire-format GPU event matching backend GpuEvent struct */
