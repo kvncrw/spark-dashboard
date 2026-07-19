@@ -5,6 +5,8 @@ GPUs. Developed and tested on the NVIDIA DGX Spark, but works on any Linux
 host with NVIDIA drivers — discrete-GPU workstations, DGX boxes, cloud VMs.
 A Rust backend collects GPU, CPU, memory, disk, and network metrics alongside
 vLLM engine statistics and streams them over WebSocket to a React frontend.
+It can also read a Netdata parent's API v3 to monitor a cluster from one
+dashboard, with live per-node selection and reachability state.
 
 ![Stack](https://img.shields.io/badge/Rust-Axum-orange) ![Stack](https://img.shields.io/badge/React_19-TypeScript-blue) ![Stack](https://img.shields.io/badge/Tailwind_CSS_4-06B6D4) ![Stack](https://img.shields.io/badge/Vite_8-646CFF) ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -205,6 +207,13 @@ Optional overrides live in `/etc/spark-dashboard/config.env` — set
 `SPARK_DASHBOARD_GPU_INDEX`, `SPARK_DASHBOARD_PROVIDER_API_KEY`, or `RUST_LOG`, then
 `sudo systemctl restart spark-dashboard`.
 
+For a Netdata parent deployment, set `SPARK_DASHBOARD_NETDATA_URL` (for example
+`http://127.0.0.1:19999`) and optionally
+`SPARK_DASHBOARD_NETDATA_NODES` (default `spark-*`). Hardware data then comes
+from Netdata API v3 and the header exposes a selector for every matching node.
+Engine collection remains independent and continues to use local discovery or
+the explicit `--engine` / `--engine-url` options.
+
 ### Upgrade
 
 ```bash
@@ -237,6 +246,8 @@ spark-dashboard service status
   -b, --bind <BIND>           Bind address [default: 0.0.0.0] [env: SPARK_DASHBOARD_BIND]
       --poll-interval <MS>    Polling interval ms [default: 1000] [env: SPARK_DASHBOARD_POLL_INTERVAL]
       --gpu-index <IDX>       NVML GPU index to monitor [default: 0] [env: SPARK_DASHBOARD_GPU_INDEX]
+      --netdata-url <URL>     Netdata parent URL [env: SPARK_DASHBOARD_NETDATA_URL]
+      --netdata-nodes <PATTERN> Netdata node selector [default: spark-*] [env: SPARK_DASHBOARD_NETDATA_NODES]
       --engine <TYPE>         Manual engine type (e.g. vllm)
       --engine-url <URL>      Manual engine endpoint (requires --engine)
       --engine-api-key <KEY>  API key for an endpoint, paired by index with --engine-url

@@ -3,7 +3,7 @@
 # ---------- stage: frontend ----------
 # Build the SPA so rust-embed can bundle frontend/dist at compile time.
 # Node 24 matches the version pinned in CI.
-FROM node:24-alpine AS frontend
+FROM node:24-bookworm-slim AS frontend
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci

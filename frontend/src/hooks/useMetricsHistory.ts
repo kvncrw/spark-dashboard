@@ -75,6 +75,7 @@ const DEFAULT_WINDOW_SECONDS = 300 // 5 minutes
 
 export function useMetricsHistory(
   metrics: MetricsSnapshot | null,
+  sourceKey: string | null = null,
 ) {
   const buffersRef = useRef(createBuffers())
   const engineBuffersRef = useRef<
@@ -88,6 +89,14 @@ export function useMetricsHistory(
   >({})
   const lastTimestampRef = useRef<number>(0)
   const [version, setVersion] = useState(0)
+
+  useEffect(() => {
+    buffersRef.current = createBuffers()
+    engineBuffersRef.current = {}
+    eventBufferRef.current = new CircularBuffer<GpuEventData>(EVENT_BUFFER_CAPACITY)
+    requestBuffersRef.current = {}
+    lastTimestampRef.current = 0
+  }, [sourceKey])
 
   useEffect(() => {
     if (!metrics || metrics.timestamp_ms === lastTimestampRef.current) return

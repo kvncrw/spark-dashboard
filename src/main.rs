@@ -76,6 +76,15 @@ struct RunArgs {
     #[arg(long, env = "SPARK_DASHBOARD_GPU_INDEX", default_value_t = 0)]
     gpu_index: u32,
 
+    /// Netdata parent URL. When set, hardware metrics are read from its API v3
+    /// instead of the local host.
+    #[arg(long, env = "SPARK_DASHBOARD_NETDATA_URL")]
+    netdata_url: Option<String>,
+
+    /// Netdata node selector used with --netdata-url.
+    #[arg(long, env = "SPARK_DASHBOARD_NETDATA_NODES", default_value = "spark-*")]
+    netdata_nodes: String,
+
     /// Manually specify engine type (use with --engine-url)
     #[arg(long, value_name = "TYPE")]
     engine: Vec<String>,
@@ -175,12 +184,23 @@ async fn run_server_inner(args: RunArgs) -> Result<(), Box<dyn std::error::Error
     ));
 
     // Pass engine_state to metrics collector so it includes engines in snapshots
-    tokio::spawn(metrics::metrics_collector(
-        tx.clone(),
-        args.poll_interval,
-        args.gpu_index,
-        engine_state.clone(),
-    ));
+    if let Some(url) = args.netdata_url.as_deref() {
+        let client = metrics::netdata::NetdataClient::new(url, args.netdata_nodes)?;
+        tracing::info!(netdata_url = url, "using Netdata API v3 hardware metrics");
+        tokio::spawn(metrics::netdata::metrics_collector(
+            tx.clone(),
+            args.poll_interval,
+            client,
+            engine_state.clone(),
+        ));
+    } else {
+        tokio::spawn(metrics::metrics_collector(
+            tx.clone(),
+            args.poll_interval,
+            args.gpu_index,
+            engine_state.clone(),
+        ));
+    }
 
     let app = server::create_router(tx);
 

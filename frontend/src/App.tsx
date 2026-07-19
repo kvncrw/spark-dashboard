@@ -1,14 +1,22 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useMetrics } from './hooks/useMetrics'
 import { useMetricsHistory } from './hooks/useMetricsHistory'
 import { ConnectionBadge } from './components/ConnectionBadge'
 import { Dashboard } from './components/views/Dashboard'
+import { selectNodeMetrics, selectNodeName } from './lib/nodeSelection'
 import type { GpuEvent, InferenceRequest } from './types/events'
 
 function App() {
   const { metrics, connectionStatus, isStale } = useMetrics()
+  const nodes = useMemo(() => metrics?.nodes ?? [], [metrics?.nodes])
+  const [selectedNode, setSelectedNode] = useState<string | null>(null)
+  const effectiveSelectedNode = selectNodeName(nodes, selectedNode)
 
-  const history = useMetricsHistory(metrics)
+  const displayedMetrics = useMemo(() => {
+    return selectNodeMetrics(metrics, effectiveSelectedNode)
+  }, [metrics, effectiveSelectedNode])
+
+  const history = useMetricsHistory(displayedMetrics, effectiveSelectedNode)
 
   const { getEvents, getRequests } = history
 
@@ -33,11 +41,30 @@ function App() {
 
   return (
     <div className="h-dvh flex flex-col bg-[#08080a] overflow-hidden">
-      <header className="shrink-0 border-b border-white/[0.04] px-4 py-1.5 flex justify-between items-center">
+      <header className="shrink-0 border-b border-white/[0.04] px-4 py-1.5 flex justify-between items-center gap-3">
         <h1 className="text-xl font-semibold text-zinc-100 tracking-tight" style={{ fontFamily: 'Inter, sans-serif' }}>
           <span className="text-[#76B900]">Spark</span>{' '}
           <span className="text-zinc-500 font-normal">Dashboard</span>
         </h1>
+        {nodes.length > 0 && (
+          <nav className="flex items-center gap-1 overflow-x-auto" aria-label="Spark node">
+            {nodes.map((node) => (
+              <button
+                key={node.name}
+                type="button"
+                onClick={() => setSelectedNode(node.name)}
+                className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-mono transition-colors ${
+                  node.name === effectiveSelectedNode
+                    ? 'bg-[#76B900]/15 text-[#9bd52b] ring-1 ring-[#76B900]/30'
+                    : 'text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300'
+                }`}
+              >
+                <span className={`size-1.5 rounded-full ${node.state === 'reachable' ? 'bg-[#76B900]' : 'bg-amber-500'}`} />
+                {node.name.replace(/^spark-/, '')}
+              </button>
+            ))}
+          </nav>
+        )}
         <ConnectionBadge status={connectionStatus} isStale={isStale} />
       </header>
 
@@ -54,7 +81,7 @@ function App() {
         )}
 
         <Dashboard
-          metrics={metrics}
+          metrics={displayedMetrics}
           history={history}
           events={events}
           requests={requests}

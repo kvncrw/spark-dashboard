@@ -2,6 +2,7 @@ pub mod cpu;
 pub mod disk;
 pub mod gpu;
 pub mod memory;
+pub mod netdata;
 pub mod network;
 
 use crate::engines::EngineSnapshot;
@@ -19,6 +20,20 @@ pub struct MetricsSnapshot {
     pub network: NetworkMetrics,
     pub engines: Vec<EngineSnapshot>,
     pub gpu_events: Vec<gpu::GpuEvent>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub nodes: Vec<NodeMetricsSnapshot>,
+}
+
+/// Hardware metrics for one node when a remote multi-node source is active.
+#[derive(Clone, serde::Serialize, Debug)]
+pub struct NodeMetricsSnapshot {
+    pub name: String,
+    pub state: String,
+    pub gpu: GpuMetrics,
+    pub cpu: CpuMetrics,
+    pub memory: MemoryMetrics,
+    pub disk: DiskMetrics,
+    pub network: NetworkMetrics,
 }
 
 /// Runs the metrics collection loop, broadcasting JSON snapshots to all subscribers.
@@ -117,6 +132,7 @@ pub async fn metrics_collector(
             network: network::collect_network_metrics(&networks),
             engines,
             gpu_events,
+            nodes: Vec::new(),
         };
 
         match serde_json::to_string(&snapshot) {
@@ -178,6 +194,7 @@ pub async fn metrics_collector(
             network: network::collect_network_metrics(&networks),
             engines,
             gpu_events,
+            nodes: Vec::new(),
         };
 
         match serde_json::to_string(&snapshot) {
