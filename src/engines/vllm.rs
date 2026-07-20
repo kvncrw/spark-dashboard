@@ -342,7 +342,7 @@ impl EngineAdapter for VllmAdapter {
             .auth(
                 self.client
                     .get(format!("{}/health", self.endpoint))
-                    .timeout(Duration::from_secs(2)),
+                    .timeout(Duration::from_secs(5)),
             )
             .send()
             .await
@@ -363,7 +363,7 @@ impl EngineAdapter for VllmAdapter {
                 .auth(
                     self.client
                         .get(format!("{}/v1/models", self.endpoint))
-                        .timeout(Duration::from_secs(2)),
+                        .timeout(Duration::from_secs(5)),
                 )
                 .send()
                 .await
@@ -407,7 +407,7 @@ impl EngineAdapter for VllmAdapter {
             .auth(
                 self.client
                     .get(format!("{}/metrics", self.endpoint))
-                    .timeout(Duration::from_secs(2)),
+                    .timeout(Duration::from_secs(5)),
             )
             .send()
             .await
