@@ -251,6 +251,10 @@ pub struct EngineState {
     /// When a fetch was last attempted (success or unresolved) — drives the
     /// unresolved-retry cooldown.
     pub model_attempted_at: Option<Instant>,
+    /// Manual `--engine-url` overrides. These must survive stop/remove grace
+    /// periods so a temporarily-down remote head (DeepSeek loading, network
+    /// blip) does not vanish from the UI until a pod restart.
+    pub permanent: bool,
 }
 
 impl EngineState {
@@ -265,7 +269,17 @@ impl EngineState {
             cached_model: None,
             model_fetched_at: None,
             model_attempted_at: None,
+            permanent: false,
         }
+    }
+
+    pub fn new_permanent(
+        adapter: Box<dyn EngineAdapter>,
+        deployment_mode: DeploymentMode,
+    ) -> Self {
+        let mut state = Self::new(adapter, deployment_mode);
+        state.permanent = true;
+        state
     }
 
     /// Whether `/v1/models` should be hit on this poll tick. Returns `true`
@@ -327,7 +341,11 @@ impl EngineState {
 
     /// Returns true when the engine has been in Stopped state for longer than
     /// 30 seconds, meaning it should be removed from the active engine list.
+    /// Permanent (manual override) engines are never removed.
     pub fn should_remove(&self) -> bool {
+        if self.permanent {
+            return false;
+        }
         if let Some(stopped) = self.stopped_at {
             self.status == EngineStatus::Stopped && stopped.elapsed() > Duration::from_secs(30)
         } else {
@@ -439,31 +457,41 @@ pub async fn engine_collector_loop(
     overrides: Vec<EngineOverride>,
     api_keys: ApiKeyResolver,
 ) {
+    // Remote estate engines (VLAN20 Sparks/GX10s) can be slower than the
+    // in-cluster blackwell hop; 2s was dropping healthy GLM under load.
     let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(2))
+        .timeout(Duration::from_secs(5))
         .build()
         .unwrap_or_default();
 
     let mut sys = sysinfo::System::new();
     let mut engine_map: HashMap<(EngineType, String), EngineState> = HashMap::new();
 
-    // Seed manual overrides into the engine map at startup (D-12)
-    for ov in &overrides {
-        let adapter = create_adapter(
-            ov.engine_type.clone(),
-            ov.endpoint.clone(),
-            client.clone(),
-            None,
-            ov.api_key.clone(),
-        );
-        let key = (ov.engine_type.clone(), ov.endpoint.clone());
-        engine_map.insert(key, EngineState::new(adapter, DeploymentMode::Native));
-        tracing::info!(
-            "Manual engine override registered: {} at {}",
-            ov.engine_type,
-            ov.endpoint
-        );
-    }
+    // Seed manual overrides into the engine map at startup (D-12).
+    // These are permanent: re-inserted on every detection tick if missing.
+    let seed_manual = |map: &mut HashMap<(EngineType, String), EngineState>,
+                       overrides: &[EngineOverride],
+                       client: &reqwest::Client| {
+        for ov in overrides {
+            let key = (ov.engine_type.clone(), ov.endpoint.clone());
+            map.entry(key).or_insert_with(|| {
+                let adapter = create_adapter(
+                    ov.engine_type.clone(),
+                    ov.endpoint.clone(),
+                    client.clone(),
+                    None,
+                    ov.api_key.clone(),
+                );
+                tracing::info!(
+                    "Manual engine override registered: {} at {}",
+                    ov.engine_type,
+                    ov.endpoint
+                );
+                EngineState::new_permanent(adapter, DeploymentMode::Native)
+            });
+        }
+    };
+    seed_manual(&mut engine_map, &overrides, &client);
 
     let mut detection_interval = tokio::time::interval(Duration::from_secs(5));
     let mut poll_interval = tokio::time::interval(Duration::from_secs(1));
@@ -496,6 +524,10 @@ pub async fn engine_collector_loop(
                         EngineState::new(adapter, d.deployment_mode.clone())
                     });
                 }
+
+                // Keep operator-configured endpoints present even after a
+                // temporary outage (loading model, network blip, etc.).
+                seed_manual(&mut engine_map, &overrides, &client);
             }
 
             _ = poll_interval.tick() => {
