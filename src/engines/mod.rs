@@ -273,10 +273,7 @@ impl EngineState {
         }
     }
 
-    pub fn new_permanent(
-        adapter: Box<dyn EngineAdapter>,
-        deployment_mode: DeploymentMode,
-    ) -> Self {
+    pub fn new_permanent(adapter: Box<dyn EngineAdapter>, deployment_mode: DeploymentMode) -> Self {
         let mut state = Self::new(adapter, deployment_mode);
         state.permanent = true;
         state
