@@ -90,6 +90,13 @@ struct RunArgs {
     #[arg(long, env = "SPARK_DASHBOARD_MODEL_CATALOG_URL")]
     model_catalog_url: Option<String>,
 
+    /// Comma-separated estate allowlist for the model catalog, e.g. "spark".
+    /// Empty (the default) shows every estate the catalog returns. Use this to
+    /// scope a per-estate dashboard without filtering the shared catalog API,
+    /// which other consumers still need in full.
+    #[arg(long, env = "SPARK_DASHBOARD_ESTATES", default_value = "")]
+    estates: String,
+
     /// Manually specify engine type (use with --engine-url)
     #[arg(long, value_name = "TYPE")]
     engine: Vec<String>,
@@ -182,9 +189,15 @@ async fn run_server_inner(args: RunArgs) -> Result<(), Box<dyn std::error::Error
     let model_catalog_state = Arc::new(RwLock::new(Vec::new()));
 
     if let Some(url) = args.model_catalog_url.clone() {
-        tracing::info!(model_catalog_url = url, "using external model catalog");
+        let estates = metrics::model_catalog::parse_estates(&args.estates);
+        tracing::info!(
+            model_catalog_url = url,
+            estates = ?estates,
+            "using external model catalog"
+        );
         tokio::spawn(metrics::model_catalog::collector_loop(
             url,
+            estates,
             model_catalog_state.clone(),
         ));
     }
